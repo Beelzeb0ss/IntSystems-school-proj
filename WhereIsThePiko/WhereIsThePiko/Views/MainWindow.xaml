@@ -1,0 +1,260 @@
+﻿<Window x:Class="WhereIsThePiko.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:WhereIsThePiko"
+        xmlns:models="clr-namespace:WhereIsThePiko.ModelStuff"
+        xmlns:data="clr-namespace:WhereIsThePiko.ViewModels"
+        xmlns:converters="clr-namespace:WhereIsThePiko.Utility.Converters"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        mc:Ignorable="d"
+        Title="Къде е пикото" Height="480" Width="840">
+
+    <Window.DataContext>
+        <data:MainViewModel />
+    </Window.DataContext>
+    
+    <Window.Resources>
+
+        <converters:BoolToColorConverter x:Key="BoolToColor"/>
+        <converters:AddOffsetConverter x:Key="CenterXY"/>
+        <converters:ToolEnumToBoolConverter x:Key="ToolEnumToBool"/>
+        <converters:TwoParameterCommandConverter x:Key="TwoParameterCmd"/>
+        <converters:TwoBoolsToColorConverter x:Key="TwoBoolToColor"/>
+
+        <DataTemplate DataType="{x:Type models:Node}">
+            <Grid Cursor="Hand">
+                <Rectangle Height="50" Width="50">
+                    <Rectangle.Fill>
+                        <MultiBinding Converter="{StaticResource TwoBoolToColor}">
+                            <Binding Path="WasVisited"/>
+                            <Binding Path="IsFinalPath"/>
+                        </MultiBinding>
+                    </Rectangle.Fill>
+                </Rectangle>
+                <Label FontSize="18" Content="{Binding Name}"/>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type models:Path}">
+            <Grid>
+                <Line X1="{Binding From.X, Converter={StaticResource CenterXY}}"
+                      Y1="{Binding From.Y, Converter={StaticResource CenterXY}}"
+                      X2="{Binding To.X, Converter={StaticResource CenterXY}}"
+                      Y2="{Binding To.Y, Converter={StaticResource CenterXY}}"
+                      Stroke="Black"
+                      />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PathListTemplate" DataType="{x:Type models:Path}">
+            <StackPanel Orientation="Horizontal">
+                <Label Margin="0" Padding="2">To:</Label>
+                <Label Margin="0" Padding="2" Content="{Binding To.Name}"></Label>
+                <Label Margin="0" Padding="2" Content="Len:"/>
+                <Label Margin="0" Padding="2" Content="{Binding Lenght}"/>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate x:Key="NodeComboBoxTemplate" DataType="{x:Type models:Node}">
+            <Label Margin="0" Padding="2" Content="{Binding Name}"></Label>
+        </DataTemplate>
+
+    </Window.Resources>
+    
+    <Grid Background="AliceBlue">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="3*"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        
+        <ScrollViewer Grid.Column="1" Grid.Row="0" Grid.RowSpan="3" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+            <Grid MinWidth="{Binding MinCanvasWidth}" MinHeight="{Binding MinCanvasHeight}">
+                <ListBox SelectionMode="Single" SelectedItem="{Binding SelectedNode, UpdateSourceTrigger=PropertyChanged}" x:Name="Nodes" Panel.ZIndex="1" Background="Transparent" ItemsSource="{Binding Graph}">
+
+                    <i:Interaction.Triggers>
+                        <i:EventTrigger EventName="MouseUp" >
+                            <i:InvokeCommandAction Command="{Binding MouseDownCommand}" CommandParameter="{Binding ElementName=Nodes}" />
+                        </i:EventTrigger>
+                    </i:Interaction.Triggers>
+
+                    <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter
+                        Property="Canvas.Left"
+                        Value="{Binding X}"
+                        />
+                        <Setter
+                        Property="Canvas.Top"
+                        Value="{Binding Y}"
+                        />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                </ListBox>
+
+                <ItemsControl Panel.ZIndex="0" Background="White" ItemsSource="{Binding Paths}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter
+                        Property="Canvas.Left"
+                        Value="{Binding X}"
+                        />
+                        <Setter
+                        Property="Canvas.Top"
+                        Value="{Binding Y}"
+                        />
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                </ItemsControl>
+            </Grid>
+        </ScrollViewer>
+
+        <UniformGrid Grid.Column="0" Grid.Row="0" Rows="2" Columns="3">
+            <RadioButton ToolTip="Select" IsChecked="{Binding SelectedTool, Mode=TwoWay, Converter={StaticResource ToolEnumToBool}, ConverterParameter=Select}" Style="{StaticResource {x:Type ToggleButton}}">
+                <Label Content="Select"/>
+            </RadioButton>
+            <RadioButton ToolTip="Create Node" IsChecked="{Binding SelectedTool, Mode=TwoWay, Converter={StaticResource ToolEnumToBool}, ConverterParameter=CreateNode}" Style="{StaticResource {x:Type ToggleButton}}">
+                <Label Content="Create"/>
+            </RadioButton>
+        </UniformGrid>
+
+        <Border Visibility="{Binding EditNodeVisibility}" Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" BorderThickness="4" BorderBrush="LightBlue" Background="GhostWhite">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Label Grid.Column="0" Grid.Row="0" >Name:</Label>
+                <UniformGrid Grid.Column="1" Grid.Row="0" Columns="2">
+                    <Label Content="{Binding SelectedNode.Name}"></Label>
+                    <Button Command="{Binding DeleteNodeCommand}" Content="Delete"/>
+                </UniformGrid>
+
+                <Label Grid.Column="0" Grid.Row="1">X:</Label>
+                <Label Grid.Column="1" Grid.Row="1" Content="{Binding SelectedNode.X}"></Label>
+
+                <Label Grid.Column="0" Grid.Row="2">Y:</Label>
+                <Label Grid.Column="1" Grid.Row="2" Content="{Binding SelectedNode.Y}"></Label>
+
+                <Label Grid.Column="0" Grid.Row="3">Weight:</Label>
+                <TextBox Grid.Column="1" Grid.Row="3" Text="{Binding SelectedNode.Weight, UpdateSourceTrigger=PropertyChanged}"/>
+
+                <Label Grid.Column="0" Grid.Row="4">Paths:</Label>
+                <ScrollViewer Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="5" Grid.RowSpan="2">
+                    <ListBox x:Name="PathList" ItemTemplate="{StaticResource PathListTemplate}" ItemsSource="{Binding SelectedNode.Paths}">
+
+                    </ListBox>
+                </ScrollViewer>
+                <Button Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2" Command="{Binding RemovePathCommand}" CommandParameter="{Binding ElementName=PathList}" Content="Remove"/>
+                <Label Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="8">Add Path To:</Label>
+                <ComboBox x:Name="PathTo" Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="9" ItemTemplate="{StaticResource NodeComboBoxTemplate}" ItemsSource="{Binding Graph}"/>
+                <CheckBox Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="10" IsChecked="{Binding IsPathTwoWay, UpdateSourceTrigger=PropertyChanged}">Is Path Two Way</CheckBox>
+                <Button Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="11" Command="{Binding AddPathCommand}" CommandParameter="{Binding ElementName=PathTo}" Content="Add"/>
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="2" BorderThickness="4" BorderBrush="LightBlue" Background="GhostWhite">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Label Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" >Search for piko</Label>
+
+                <Label Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" >From:</Label>
+                <ComboBox x:Name="From" ItemTemplate="{StaticResource NodeComboBoxTemplate}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding Graph}"/>
+
+                <Label Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="16" >To:</Label>
+                <ComboBox x:Name="To" ItemTemplate="{StaticResource NodeComboBoxTemplate}" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" ItemsSource="{Binding Graph}"/>
+
+                <Button Grid.Row="8" Grid.Column="0" Command="{Binding RunDfsCommand}" Content="Run DFS">
+                    <Button.CommandParameter>
+                        <MultiBinding Converter="{StaticResource TwoParameterCmd}">
+                            <Binding ElementName="From"/>
+                            <Binding ElementName="To"/>
+                        </MultiBinding>
+                    </Button.CommandParameter>
+                </Button>
+                <Button Grid.Row="8" Grid.Column="1" Command="{Binding RunASTARCommand}" Content="Run A*">
+                    <Button.CommandParameter>
+                        <MultiBinding Converter="{StaticResource TwoParameterCmd}">
+                            <Binding ElementName="From"/>
+                            <Binding ElementName="To"/>
+                        </MultiBinding>
+                    </Button.CommandParameter>
+                </Button>
+                <Button Grid.Row="9" Grid.Column="0" Command="{Binding RunFewestPathsCommand}" Content="Run Fewest Paths">
+                    <Button.CommandParameter>
+                        <MultiBinding Converter="{StaticResource TwoParameterCmd}">
+                            <Binding ElementName="From"/>
+                            <Binding ElementName="To"/>
+                        </MultiBinding>
+                    </Button.CommandParameter>
+                </Button>
+                <Button Grid.Row="9" Grid.Column="1" Command="{Binding RunCoordWeightMixCommand}" Content="Run CWM">
+                    <Button.CommandParameter>
+                        <MultiBinding Converter="{StaticResource TwoParameterCmd}">
+                            <Binding ElementName="From"/>
+                            <Binding ElementName="To"/>
+                        </MultiBinding>
+                    </Button.CommandParameter>
+                </Button>
+            </Grid>
+        </Border>
+
+        <Image Grid.Column="2" Grid.Row="0" Source="/Images/piko.png">
+            <Image.BitmapEffect>
+                <BlurBitmapEffect Radius="1.01" />
+            </Image.BitmapEffect>
+        </Image>
+
+    </Grid>
+</Window>
